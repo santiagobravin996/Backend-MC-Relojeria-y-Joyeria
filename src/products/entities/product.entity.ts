@@ -1,31 +1,32 @@
-export class Product {
+import { SchemaFactory, Schema, Prop } from '@nestjs/mongoose'
+import {Document} from 'mongoose'
+@Schema()
+export class Product extends Document {
 
-    // Las entities son clases que representan objetos de negocio o entidades en tu aplicación. 
-    // Estas entidades suelen estar relacionadas con la capa de almacenamiento de datos, como una base
-    // de datos, y mapean directamente a tablas en una base de datos relacional o a documentos en una base 
-    // de datos NoSQL.
-
-    // Las entidades encapsulan la lógica y los comportamientos relacionados con los datos de tu aplicación.
-    // Pueden tener propiedades y métodos que definen su estructura y comportamiento, y 
-    // se utilizan para interactuar con la capa de persistencia de datos. 
-    // Además, las entidades a menudo se relacionan entre sí, lo que permite establecer relaciones y 
-    // realizar consultas más complejas en la base de datos.
-
-
-        id: string
+        @Prop({
+            unique: true,
+            index: true
+        })
         name: string
-        brand: string
+        
+        
+        @Prop()
         category: string
-        description?: string
+        @Prop()
         price: number
-        stock: boolean
-        images: string
-        discount: boolean
-        createdAt: number
-        updatedAt?: number
+        @Prop()
+        description : string
+        @Prop()
+        discount: number
+        @Prop()
+        stock : number
+        @Prop()
+        images : string
+        
+
         
     
     
     }
     
-
+export const ProductSchema = SchemaFactory.createForClass( Product)

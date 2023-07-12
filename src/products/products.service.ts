@@ -1,82 +1,98 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { v4 as uuid } from 'uuid';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
+import { Model, isValidObjectId } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
 
 @Injectable()
 export class ProductsService {
 
-  private products : Product[] = [
-    {
-    id: uuid(),
-    name: 'Reloj hombre',
-    brand: 'Tressa',
-    category: "Accesorios",
-    description: 'Reloj de gama media',
-    price: 10000,
-    stock: true,
-    images: 'todavia no configuré el multer ni nada parecido',
-    discount: false,
-    createdAt: new Date().getTime()
+  constructor(
     
-    }
+    @InjectModel(Product.name)
+    private readonly productModel:Model<Product>
     
-  ]
+     ){}
 
 
-  create(createProductDto: CreateProductDto) {
-
-    const product : Product = {
-      id: uuid(),
-      name: createProductDto.name.toLocaleLowerCase(),
-      brand: createProductDto.brand,
-      category: createProductDto.category,
-      description: createProductDto.description,
-      price: createProductDto.price,
-      stock: createProductDto.stock,
-      images: createProductDto.images,
-      discount: createProductDto.discount,
-      createdAt: new Date().getTime()
+  async create(createProductDto: CreateProductDto) {
+    createProductDto.name = createProductDto.name.toLocaleLowerCase()
+    try{
+    const product = await this.productModel.create(createProductDto)
+    return product.save()
+  } 
+  catch(error){
+  this.handleExceptions(error)
     }
-    this.products.push(product)
-    return product;
   }
 
 
 
-  findAll() {
-    return this.products;
+  async findAll() : Promise<Product[]> {
+    return this.productModel.find().exec()
+    
   }
 
 
 
-  findOne(id: string) {
-    const product = this.products.find( prod => prod.id === id);
-    if(!product) throw new NotFoundException(`Product with id ${id} not found`)
+  async findOne(id: string) {
+    
+    let product
+
+    //MongoID
+    if (isValidObjectId(id)){
+      product = await this.productModel.findById(id)
+    }
+
+    //Name
+    if (!product){
+      product = await this.productModel.findOne({ name : id.toLowerCase().trim() })
+    }
+
+    if(!product) 
+      throw new NotFoundException(`Product with id or name ${id} not found`)
+
+    return product
+
+
+  }
+
+
+
+  async update(id: string, updateProductDto: UpdateProductDto) {
+    
+    
+    const product = await this.findOne(id)
+
+
+    if (updateProductDto.name){
+      updateProductDto.name = updateProductDto.name.toLowerCase();
+
+      try{
+      const updatedProduct = await product.updateOne( updateProductDto, {new: true})
+      
+      return updatedProduct
+      } catch(error){
+        this.handleExceptions(error)
+      }
+    }
+    
+    
+  }
+
+  async remove(id: string) {
+    const product = await this.productModel.findByIdAndRemove(id)
     return product
   }
 
 
 
-  update(id: string, updateProductDto: UpdateProductDto) {
+  private handleExceptions (error : any){
+    if (error.code === 11000){
+      throw new BadRequestException(`Product exists in DB`)
+    }
+    throw new InternalServerErrorException("Can't create Product")
+  } 
 
-    let productDB = this.findOne(id)
-    this.products = this.products.map( product => {
-      if (product.id === id){
-        productDB.updatedAt = new Date().getTime();
-        productDB = {...productDB, ...updateProductDto}
-      return productDB
-      }
-      return product
-    })
-    
-  }
-
-
-
-
-  remove(id: string) {
-    this.products = this.products.filter( prod => prod.id !== id)
-  }
 }
